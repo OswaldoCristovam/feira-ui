@@ -1,6 +1,7 @@
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   FlatList,
   Image,
@@ -68,10 +69,14 @@ export default function Produtos() {
   async function carregarProdutos(reset = false) {
     if (loading) return;
     try {
+      setLoading(true);
       if(filtro){
-        setLoading(true);
         const response = await getProdutos(filtro);
-        setProdutos(prev => (reset ? response : [...prev, ...response]));
+        if(response.length > 0){
+          setProdutos(prev => (reset ? response : [...prev, ...response]));
+        }else{
+          Alert.alert('Item não encontrado na base');
+        }
       }
     } catch (err) {
       Alert.alert('Erro ao carregas os produtos: '+err);
@@ -85,12 +90,15 @@ export default function Produtos() {
   // =========================================
   async function carregaFeira() {
     try {
+      setLoading(true);
       const response = await getFeira(cdFeira);
       setFeira(response);
       return response;
     } catch (err) {
       console.error('Erro ao carregar feira:', err);
       return null;
+    }finally{
+      setLoading(false);
     }
   }
 
@@ -100,7 +108,7 @@ export default function Produtos() {
   const handleCodigoBarras = async (codigo, modo, cdProd) => {
     try {
       // Se feira não carregada, não prossegue
-
+      setLoading(true);
       if (modo === 'ATUALIZAR') {
         const produtoParaSalvar = { cdProduto: cdProd, cdCodigoBarras: codigo };
         await putProdutos(produtoParaSalvar);
@@ -109,7 +117,7 @@ export default function Produtos() {
 
       // Caso seja apenas busca
       const produto = await getProdutoPorCodigoBarras(codigo);
-
+      setLoading(false);
       if (!produto) {
         Alert.alert('Produto não encontrado', 'Deseja cadastrar?', [
           { text: 'Cancelar', style: 'cancel' },
@@ -133,6 +141,7 @@ export default function Produtos() {
   // =========================================
   const naoPegos = async () => {
     try {
+      setLoading(true);
       if (!mostrarFaltantes) {
         const response = await getItensNaoPegos(cdFeira);
         setProdutosNaoPegos(response);
@@ -140,6 +149,8 @@ export default function Produtos() {
       setMostrarFaltantes(prev => !prev);
     } catch (err) {
       console.error('Erro ao carregar produtos faltantes: ', err);
+    }finally{
+      setLoading(false);
     }
   };
 
@@ -170,35 +181,41 @@ export default function Produtos() {
 
   const handleFinalizar = async () => {
     try {
+      setLoading(true);
       await putFeira(cdFeira);
       navigation.goBack();
     } catch (err) {
       console.error('Erro ao finalizar feira: ', err);
+    }finally{
+      setLoading(false);
     }
   };
 
-  const handleIrParaItemFeira = (cdProduto, dsProduto) => {
+  const handleIrParaItemFeira = (cdProduto, dsProduto, cdCodigoBarras) => {
     if (snAltera === 'S') {
       alert('Essa feira já foi finalizada. Não é possível incluir ou editar os produtos.');
       return;
     }
-
-    Alert.alert('Deseja atualizar este produto?', 'Escolha uma opção', [
-      {
-        text: 'Sim',
-        onPress: () =>
-          navigation.navigate('ScannerProduto', {
-            returnTo: 'Produtos',
-            modo: 'ATUALIZAR',
-            cdProd: cdProduto
-          })
-      },
-      {
-        text: 'Não',
-        onPress: () =>
-          navigation.navigate('ItemFeira', { cdProduto, dsProduto, cdFeira })
-      }
-    ]);
+    if(!cdCodigoBarras){
+      Alert.alert('Deseja atualizar este produto?', 'Escolha uma opção', [
+        {
+          text: 'Sim',
+          onPress: () =>
+            navigation.navigate('ScannerProduto', {
+              returnTo: 'Produtos',
+              modo: 'ATUALIZAR',
+              cdProd: cdProduto
+            })
+        },
+        {
+          text: 'Não',
+          onPress: () =>
+            navigation.navigate('ItemFeira', { cdProduto, dsProduto, cdFeira })
+        }
+      ]);
+    }else{
+      navigation.navigate('ItemFeira', { cdProduto, dsProduto, cdFeira });
+    }
   };
 
   const abrirScanner = () => {
@@ -246,7 +263,7 @@ export default function Produtos() {
         columnWrapperStyle={styles.row}
         renderItem={({ item }) => (
           <View style={styles.itemContainer}>
-            <TouchableOpacity onPress={() => handleIrParaItemFeira(item.cdProduto, item.dsProduto)}>
+            <TouchableOpacity onPress={() => handleIrParaItemFeira(item.cdProduto, item.dsProduto, item.cdCodigoBarras)}>
               {renderImage(item.cdProduto)}
             </TouchableOpacity>
             <Text style={styles.productDescription}>
@@ -258,6 +275,12 @@ export default function Produtos() {
         onEndReached={carregarMais}
         onEndReachedThreshold={0.5}
       />
+      {loading && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color="#fff" />
+          <Text style={styles.loadingText}>Processando...</Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -297,6 +320,26 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     textAlign: 'center',
+    fontSize: 16,
+  },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 999,
+  },
+  loadingLogo: {
+    width: 120,
+    height: 120,
+    marginBottom: 16,
+  },
+  loadingText: {
+    color: '#fff',
     fontSize: 16,
   },
 });
