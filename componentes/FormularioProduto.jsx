@@ -2,6 +2,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Image,
   ScrollView,
   StyleSheet,
@@ -14,14 +15,11 @@ import { postProdutos } from '../servicos/ProdutosServico';
 
 export default function FormularioProduto() {
   const navigation = useNavigation();
-
   const route = useRoute();
-
   const codigoLido = route.params?.codigoBarras;
-
   const [produto, setProduto] = useState('');
-  const [descricao, setDescricao] = useState('');
   const [imagem, setImagem] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (codigoLido) {
@@ -55,15 +53,18 @@ export default function FormularioProduto() {
 
   const salvar = async () => {
     try {
-        const imagemSemPrefixo = imagem.replace(/^data:image\/\w+;base64,/, '');
-        const produtoParaSalvar = {
-          ...produto,
-          blImagem: imagemSemPrefixo
-        };
-        await postProdutos(produtoParaSalvar);
+      setLoading(true);
+      const imagemSemPrefixo = imagem.replace(/^data:image\/\w+;base64,/, '');
+      const produtoParaSalvar = {
+        ...produto,
+        blImagem: imagemSemPrefixo
+      };
+      await postProdutos(produtoParaSalvar);
       setProduto({ dsProduto: '', blImagem: '', cdCodigoBarras: '' });
     } catch (err) {
       alert('Erro ao adicionar Produto: '+err);
+    }finally{
+      setLoading(false);
     }
   };
 
@@ -104,6 +105,12 @@ export default function FormularioProduto() {
           <Text style={styles.buttonText}>Voltar</Text>
         </TouchableOpacity>
       </View>
+      {loading && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color="#fff" />
+          <Text style={styles.loadingText}>Processando...</Text>
+        </View>
+      )}
     </ScrollView>
   );
 }
@@ -177,5 +184,25 @@ const styles = StyleSheet.create({
     barcodeText: {
       fontSize: 16,
       color: '#333',
+    },
+    loadingOverlay: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0,0,0,0.6)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      zIndex: 999,
+    },
+    loadingLogo: {
+      width: 120,
+      height: 120,
+      marginBottom: 16,
+    },
+    loadingText: {
+      color: '#fff',
+      fontSize: 16,
     },
   });

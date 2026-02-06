@@ -1,11 +1,12 @@
 import { useNavigation } from '@react-navigation/native';
 import { useState } from 'react';
-import { Alert, Button, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Button, StyleSheet, Text, TextInput, View } from 'react-native';
 import { postFeira } from '../servicos/FeiraServico';
 
 export default function FormularioFeira() {
   const navigation = useNavigation();
   const [feira, setFeira] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleSalvar = async () => {
     if (!feira.dsFeira.trim()) {
@@ -14,11 +15,14 @@ export default function FormularioFeira() {
     }
 
     try {
+      setLoading(true);
       await postFeira(feira);
       Alert.alert('Sucesso', 'Feira cadastrada com sucesso!');
       navigation.goBack();
     } catch (error) {
       Alert.alert('Erro', 'Não foi possível salvar a feira: '+error);
+    }finally{
+      setLoading(false);
     }
   };
 
@@ -48,6 +52,12 @@ export default function FormularioFeira() {
         <Button title="Salvar" onPress={handleSalvar} />
         <Button title="Voltar" onPress={handleVoltar} />
       </View>
+      {loading && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color="#fff" />
+          <Text style={styles.loadingText}>Processando...</Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -75,5 +85,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     gap: 16,
+  },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 999,
+  },
+  loadingLogo: {
+    width: 120,
+    height: 120,
+    marginBottom: 16,
+  },
+  loadingText: {
+    color: '#fff',
+    fontSize: 16,
   },
 });

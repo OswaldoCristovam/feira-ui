@@ -3,6 +3,7 @@ import { Picker } from '@react-native-picker/picker';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useCallback, useContext, useState } from 'react';
 import {
+  ActivityIndicator,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -40,6 +41,26 @@ const styles = StyleSheet.create({
       height: 50,
       width: '100%',
     },
+    loadingOverlay: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0,0,0,0.6)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      zIndex: 999,
+    },
+    loadingLogo: {
+      width: 120,
+      height: 120,
+      marginBottom: 16,
+    },
+    loadingText: {
+      color: '#fff',
+      fontSize: 16,
+    },
   });
 
 export default function Feira() {
@@ -47,6 +68,7 @@ export default function Feira() {
   const navigation = useNavigation();
   const [feiras, setFeiras] = useState([]);
   const [feiraSelecionada, setFeiraSelecionada] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   useFocusEffect(
   useCallback(() => {
@@ -55,10 +77,13 @@ export default function Feira() {
 
   async function carregarFeiras() {
     try {
+      setLoading(true);
       const response = await getFeiras();
       setFeiras(response);
     } catch (err) {
       console.error('Erro ao carregar feiras: ', err);
+    }finally{
+      setLoading(false);
     }
   }
 
@@ -117,6 +142,12 @@ export default function Feira() {
         >
         <Text style={[styles.buttonText, { color: 'white', fontWeight: 'bold' }]}>Sair</Text>
       </TouchableOpacity>
+      {loading && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color="#fff" />
+          <Text style={styles.loadingText}>Processando...</Text>
+        </View>
+      )}
     </View>
   );
 }

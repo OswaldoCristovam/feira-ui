@@ -1,6 +1,7 @@
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Image,
   ScrollView,
   StyleSheet,
@@ -19,6 +20,7 @@ export default function ItemFeira() {
   const [produto, setProduto] = useState('');
   const [itemFeira, setItemFeira] = useState('');
   const [anterior, setAnterior] = useState('');
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     carregarProduto();
@@ -42,21 +44,27 @@ export default function ItemFeira() {
 
   async function carregarItemFeira() {
     try {
+      setLoading(true);
       const response = await getItemFeira(cdFeira, cdProduto); // você precisa ter esse endpoint implementado
       setItemFeira(response);
     } catch (err) {
       console.error('Erro ao carregar item da feira: ', err);
+    }finally{
+      setLoading(false);
     }
   }
 
   async function carregarValor() {
     if (!anterior || !itemFeira?.vlProduto){
-        try {
-            const response = await getFeiraValorAnterior(cdFeira, cdProduto);
-            setAnterior(response);
-        } catch (err) {
-            console.error('Erro ao carregar valor anterior do item: ', err);
-        }
+      try {
+        setLoading(true);
+        const response = await getFeiraValorAnterior(cdFeira, cdProduto);
+        setAnterior(response);
+      } catch (err) {
+        console.error('Erro ao carregar valor anterior do item: ', err);
+      }finally{
+        setLoading(false);
+      }
     }
   }
 
@@ -79,13 +87,16 @@ export default function ItemFeira() {
 
   const handleSalvar = async () => {
     try{
-        if(itemFeira.cdItFeira !== undefined){
-            await putItemFeira(cdFeira, cdProduto, itemFeira);
-        }else{
-            await postItemFeira(cdFeira, cdProduto, itemFeira);
-        }
+      setLoading(true);
+      if(itemFeira.cdItFeira !== undefined){
+        await putItemFeira(cdFeira, cdProduto, itemFeira);
+      }else{
+        await postItemFeira(cdFeira, cdProduto, itemFeira);
+      }
     } catch (err) {
-        alert('Erro ao atualizar Produto: '+ err);
+      alert('Erro ao atualizar Produto: '+ err);
+    }finally{
+      setLoading(false);
     }
     
   };
@@ -96,21 +107,34 @@ export default function ItemFeira() {
 
   const handleRemover = async () => {
     try{
-        await deleteItemFeira(cdFeira, cdProduto);
+      setLoading(true);
+      await deleteItemFeira(cdFeira, cdProduto);
     } catch (err) {
-        alert('Erro ao adicionar Produto: '+err);
+      alert('Erro ao adicionar Produto: '+err);
+    }finally{
+      setLoading(false);
     }
   };
 
     const comparacao = () => {
-        if (itemFeira.vlProduto - anterior.vlProduto > 0) {
-            return `Mais caro R$ ${Math.abs((itemFeira.vlProduto - anterior.vlProduto)).toFixed(2).replace('.', ',')}`;
-        }else{
-            return `Mais barato R$ ${Math.abs((itemFeira.vlProduto - anterior.vlProduto)).toFixed(2).replace('.', ',')}`;
-        }
+      if (itemFeira.vlProduto - anterior.vlProduto > 0) {
+        return `Mais caro R$ ${Math.abs((itemFeira.vlProduto - anterior.vlProduto)).toFixed(2).replace('.', ',')}`;
+      }else{
+        return `Mais barato R$ ${Math.abs((itemFeira.vlProduto - anterior.vlProduto)).toFixed(2).replace('.', ',')}`;
+      }
     };
 
-  if (!produto || !itemFeira) return <Text>Carregando...</Text>;
+  if (!produto || !itemFeira){ 
+    return (
+      <View>{loading && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color="#fff" />
+          <Text style={styles.loadingText}>Processando...</Text>
+        </View>
+        )}
+      </View>
+      );
+    }
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -165,6 +189,12 @@ export default function ItemFeira() {
             <Text style={styles.removeText}>Voltar</Text>
         </TouchableOpacity>
       </View>
+      {loading && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color="#fff" />
+          <Text style={styles.loadingText}>Processando...</Text>
+        </View>
+      )}
     </ScrollView>
   );
 }
@@ -216,5 +246,25 @@ const styles = StyleSheet.create({
     width: '100%',
     gap: 20,
     height: 70,
-  }
+  },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 999,
+  },
+  loadingLogo: {
+    width: 120,
+    height: 120,
+    marginBottom: 16,
+  },
+  loadingText: {
+    color: '#fff',
+    fontSize: 16,
+  },
 });
